@@ -6,6 +6,7 @@ import cors from 'cors';
 
 import userRoutes from './routes/user.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import courseRoutes from './routes/course.routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -40,6 +41,7 @@ mongoose.connect(process.env.MONGO_URI, {
 // Define API routes
 app.use("/api/user", userRoutes);  // User management routes
 app.use("/api/auth", authRoutes);  // Authentication routes
+app.use("/api/courses", courseRoutes); // Courses Routes
 
 
 

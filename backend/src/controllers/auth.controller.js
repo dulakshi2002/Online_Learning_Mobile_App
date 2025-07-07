@@ -4,11 +4,17 @@ import { errorHandler } from '../utils/error.js';
 import jwt from 'jsonwebtoken';
 
 export const signup = async (req, res, next) => {
-  const { username, email, password } = req.body;
+  const { username, email, password, role } = req.body;
   const hashedPassword = bcryptjs.hashSync(password, 10);
   //get random avatar
   const profilePicture = `https://api.dicebear.com/9.x/avataaars/svg?seed=${username}`;
-  const newUser = new User({ username, email, password: hashedPassword, isAdmin: false, profilePicture });
+  const newUser = new User({ 
+    username, 
+    email, 
+    password: hashedPassword, 
+    role: role === 'instructor' ? 'instructor' : 'student', 
+    profilePicture 
+  });
   try {
     if(!username || !email || !password) {
         return res.status(400).json({ message: "All fields are required"});
@@ -40,6 +46,7 @@ export const signup = async (req, res, next) => {
   }
 };
 
+
 export const signin = async (req, res, next) => {
   const { email, password } = req.body;
   try {
@@ -49,18 +56,31 @@ export const signin = async (req, res, next) => {
     const validPassword = bcryptjs.compareSync(password, validUser.password);
     if (!validPassword) return next(errorHandler(401, 'Wrong credentials'));
 
-    const token = jwt.sign({ id: validUser._id, isAdmin: validUser.isAdmin }, process.env.JWT_SECRET);
+    const payload = { id: validUser._id, role: validUser.role };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: '1d', // or however long you like
+    });
 
-    const { password: hashedPassword, ...rest } = validUser._doc;
-    const expiryDate = new Date(Date.now() + 86400000); // 1 hour
+    const { password: pw, ...userData } = validUser._doc;
+    const expiryDate = new Date(Date.now() + 24 * 60 * 60 * 1000); // 1 day
+
     res
-      .cookie('access_token', token, { httpOnly: true, expires: expiryDate })
+      .cookie('access_token', token, {
+        httpOnly: true,
+        expires: expiryDate,
+        sameSite: 'lax',
+      })
       .status(200)
-      .json({ ...rest, token, role: validUser.isAdmin ? 'admin' : 'user' });
+      .json({
+        ...userData,
+        token,
+        role: validUser.role,      // now 'instructor' or 'student'
+      });
   } catch (error) {
     next(error);
   }
 };
+
 
 
 export const google = async (req, res, next) => {
